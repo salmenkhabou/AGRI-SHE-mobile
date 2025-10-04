@@ -29,44 +29,246 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    
     return Scaffold(
-      body: Row(
-        children: [
-          // Sidebar Navigation
-          _buildSidebar(),
-          
-          // Main Content
-          Expanded(
-            child: Column(
-              children: [
-                _buildTopBar(),
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    onPageChanged: (index) {
-                      setState(() {
-                        _selectedIndex = index;
-                      });
-                    },
+      appBar: isDesktop ? null : _buildMobileAppBar(),
+      body: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
+      bottomNavigationBar: isDesktop ? null : _buildBottomNavBar(),
+      drawer: isDesktop ? null : _buildMobileDrawer(),
+      
+      // Floating Chatbot Button
+      floatingActionButton: const ChatbotWidget(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );  }
+
+  // Desktop Layout (existing layout)
+  Widget _buildDesktopLayout() {
+    return Row(
+      children: [
+        // Sidebar Navigation
+        _buildSidebar(),
+        
+        // Main Content
+        Expanded(
+          child: Column(
+            children: [
+              _buildTopBar(),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _selectedIndex = index;
+                    });
+                  },
+                  children: [
+                    _buildOverviewPage(),
+                    _buildIoTDataPage(),
+                    _buildTasksPage(),
+                    _buildLearningPage(),
+                    _buildNotificationsPage(),
+                    _buildOpportunitiesPage(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Mobile Layout
+  Widget _buildMobileLayout() {
+    return IndexedStack(
+      index: _selectedIndex,
+      children: [
+        _buildOverviewPage(),
+        _buildIoTDataPage(),
+        _buildTasksPage(),
+        _buildLearningPage(),
+        _buildNotificationsPage(),
+        _buildOpportunitiesPage(),
+      ],
+    );
+  }
+
+  // Mobile App Bar
+  PreferredSizeWidget _buildMobileAppBar() {
+    return AppBar(
+      title: Text(_menuItems[_selectedIndex]['label']),
+      backgroundColor: Colors.white,
+      foregroundColor: AppTheme.textDark,
+      elevation: 1,
+      actions: [
+        Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            return PopupMenuButton<String>(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: CircleAvatar(
+                  backgroundColor: AppTheme.primaryGreen,
+                  radius: 18,
+                  child: Text(
+                    authProvider.userId?.substring(0, 1).toUpperCase() ?? 'U',
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ),
+              onSelected: (value) {
+                if (value == 'profile') {
+                  Navigator.pushNamed(context, '/profile');
+                } else if (value == 'logout') {
+                  authProvider.logout();
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/',
+                    (route) => false,
+                  );
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'profile',
+                  child: Row(
                     children: [
-                      _buildOverviewPage(),
-                      _buildIoTDataPage(),
-                      _buildTasksPage(),
-                      _buildLearningPage(),
-                      _buildNotificationsPage(),
-                      _buildOpportunitiesPage(),
+                      Icon(Icons.person),
+                      SizedBox(width: 8),
+                      Text('Profile'),
                     ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout),
+                      SizedBox(width: 8),
+                      Text('Logout'),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // Mobile Bottom Navigation Bar
+  Widget _buildBottomNavBar() {
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: (index) {
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: AppTheme.primaryGreen,
+      unselectedItemColor: AppTheme.textLight,
+      backgroundColor: Colors.white,
+      elevation: 8,
+      items: _menuItems.map((item) {
+        return BottomNavigationBarItem(
+          icon: Icon(item['icon']),
+          label: item['label'],
+        );
+      }).toList(),
+    );
+  }
+
+  // Mobile Drawer
+  Widget _buildMobileDrawer() {
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              color: AppTheme.primaryGreen,
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.eco,
+                  color: Colors.white,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Agri-SHE',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
           ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _menuItems.length,
+              itemBuilder: (context, index) {
+                final item = _menuItems[index];
+                final isSelected = _selectedIndex == index;
+                
+                return ListTile(
+                  leading: Icon(
+                    item['icon'],
+                    color: isSelected ? AppTheme.primaryGreen : AppTheme.textLight,
+                  ),
+                  title: Text(
+                    item['label'],
+                    style: TextStyle(
+                      color: isSelected ? AppTheme.primaryGreen : AppTheme.textDark,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                  selected: isSelected,
+                  selectedTileColor: AppTheme.lightGreen,
+                  onTap: () {
+                    setState(() {
+                      _selectedIndex = index;
+                    });
+                    Navigator.pop(context); // Close drawer
+                  },
+                );
+              },
+            ),
+          ),
+          const Divider(),
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              return Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.person),
+                    title: const Text('Profile'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/profile');
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.logout),
+                    title: const Text('Logout'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      authProvider.logout();
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        '/',
+                        (route) => false,
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ),
-      
-      // Floating Chatbot Button
-      floatingActionButton: const ChatbotWidget(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -229,10 +431,13 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
       ),
     );
   }
-
   Widget _buildOverviewPage() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    final padding = isDesktop ? 24.0 : 16.0;
+    
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -245,88 +450,154 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
           ),
           
           const SizedBox(height: 24),
-          
-          // Stats Cards
-          Row(
-            children: [
-              Expanded(child: _buildStatCard('Active Crops', '5', Icons.eco, Colors.green)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildStatCard('Water Saved', '40%', Icons.water_drop, Colors.blue)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildStatCard('Revenue', '2,450 TND', Icons.attach_money, Colors.orange)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildStatCard('Tasks', '3 Pending', Icons.task, Colors.purple)),
-            ],
-          ),
-          
+          // Stats Cards - Responsive Grid
+          _buildResponsiveStatsGrid(),
           const SizedBox(height: 32),
           
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Recent Activity
-              Expanded(
-                flex: 2,
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Recent Activity',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildActivityItem('Tomato field watered automatically', '2 hours ago', Icons.water_drop),
-                        _buildActivityItem('Pest control task completed', '1 day ago', Icons.bug_report),
-                        _buildActivityItem('Weather alert: Rain expected tomorrow', '2 days ago', Icons.cloud),
-                        _buildActivityItem('New buyer inquiry received', '3 days ago', Icons.message),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              
-              const SizedBox(width: 16),
-              
-              // Quick Actions
-              Expanded(
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Quick Actions',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildQuickActionButton('View IoT Data', Icons.sensors, () {
-                          setState(() {
-                            _selectedIndex = 1;
-                          });
-                          _pageController.animateToPage(1, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-                        }),
-                        _buildQuickActionButton('Add Task', Icons.add_task, () {}),
-                        _buildQuickActionButton('Check Weather', Icons.wb_sunny, () {}),
-                        _buildQuickActionButton('Browse Market', Icons.shopping_cart, () {
-                          Navigator.pushNamed(context, '/marketplace');
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          // Activity and Quick Actions - Responsive Layout
+          _buildResponsiveActivitySection(),
         ],
       ),
+    );
+  }
+
+  // Responsive Stats Grid
+  Widget _buildResponsiveStatsGrid() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    final isTablet = screenWidth > 600;
+    
+    final crossAxisCount = isDesktop ? 4 : (isTablet ? 2 : 2);
+    
+    return GridView.count(
+      crossAxisCount: crossAxisCount,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: isDesktop ? 1.2 : 1.5,
+      children: [
+        _buildStatCard('Active Crops', '5', Icons.eco, Colors.green),
+        _buildStatCard('Water Saved', '40%', Icons.water_drop, Colors.blue),
+        _buildStatCard('Revenue', '2,450 TND', Icons.attach_money, Colors.orange),
+        _buildStatCard('Tasks', '3 Pending', Icons.task, Colors.purple),
+      ],
+    );
+  }
+
+  // Responsive Activity Section
+  Widget _buildResponsiveActivitySection() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    
+    if (isDesktop) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: _buildRecentActivityCard(),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _buildQuickActionsCard(),
+          ),
+        ],
+      );
+    } else {
+      return Column(
+        children: [
+          _buildQuickActionsCard(),
+          const SizedBox(height: 16),
+          _buildRecentActivityCard(),
+        ],
+      );
+    }
+  }
+
+  Widget _buildRecentActivityCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Recent Activity',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildActivityItem('Tomato field watered automatically', '2 hours ago', Icons.water_drop),
+            _buildActivityItem('Pest control task completed', '1 day ago', Icons.bug_report),
+            _buildActivityItem('Weather alert: Rain expected tomorrow', '2 days ago', Icons.cloud),
+            _buildActivityItem('New buyer inquiry received', '3 days ago', Icons.message),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsCard() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quick Actions',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildQuickActionButton('View IoT Data', Icons.sensors, () {
+              setState(() {
+                _selectedIndex = 1;
+              });
+              if (isDesktop) {
+                _pageController.animateToPage(1, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+              }
+            }),
+            _buildQuickActionButton('Add Task', Icons.add_task, () {}),
+            _buildQuickActionButton('Check Weather', Icons.wb_sunny, () {}),
+            _buildQuickActionButton('Browse Market', Icons.shopping_cart, () {
+              Navigator.pushNamed(context, '/marketplace');
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Responsive Sensor Grid
+  Widget _buildResponsiveSensorGrid() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    final isTablet = screenWidth > 600;
+    
+    final crossAxisCount = isDesktop ? 3 : (isTablet ? 2 : 2);
+    
+    return GridView.count(
+      crossAxisCount: crossAxisCount,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: isDesktop ? 1.1 : 1.3,
+      children: [
+        _buildSensorCard('Soil Moisture', '68%', Icons.water_drop, Colors.blue, 'Optimal'),
+        _buildSensorCard('Temperature', '24°C', Icons.thermostat, Colors.orange, 'Good'),
+        _buildSensorCard('Humidity', '72%', Icons.opacity, Colors.teal, 'High'),
+        _buildSensorCard('Light Level', '85%', Icons.wb_sunny, Colors.yellow, 'Excellent'),
+        _buildSensorCard('pH Level', '6.8', Icons.science, Colors.purple, 'Ideal'),
+        _buildSensorCard('Water Usage', '120L', Icons.water, Colors.cyan, 'Efficient'),
+      ],
     );
   }
 
@@ -398,10 +669,13 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
       ),
     );
   }
-
   Widget _buildIoTDataPage() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    final padding = isDesktop ? 24.0 : 16.0;
+    
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -413,23 +687,8 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
           ),
           
           const SizedBox(height: 24),
-          
-          // Sensor Cards
-          GridView.count(
-            crossAxisCount: 3,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              _buildSensorCard('Soil Moisture', '68%', Icons.water_drop, Colors.blue, 'Optimal'),
-              _buildSensorCard('Temperature', '24°C', Icons.thermostat, Colors.orange, 'Good'),
-              _buildSensorCard('Humidity', '72%', Icons.opacity, Colors.teal, 'High'),
-              _buildSensorCard('Light Level', '85%', Icons.wb_sunny, Colors.yellow, 'Excellent'),
-              _buildSensorCard('pH Level', '6.8', Icons.science, Colors.purple, 'Ideal'),
-              _buildSensorCard('Water Usage', '120L', Icons.water, Colors.cyan, 'Efficient'),
-            ],
-          ),
+          // Sensor Cards - Responsive Grid
+          _buildResponsiveSensorGrid(),
           
           const SizedBox(height: 32),
           
@@ -504,12 +763,15 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
         ),
       ),
     );
-  }
-  Widget _buildTasksPage() {
+  }  Widget _buildTasksPage() {
     return Consumer<TaskProvider>(
       builder: (context, taskProvider, child) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isDesktop = screenWidth > 800;
+        final padding = isDesktop ? 24.0 : 16.0;
+        
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(padding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -569,45 +831,45 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
       ),
     );
   }
-
-  // Build Task Statistics Row
+  // Build Task Statistics Row - Responsive
   Widget _buildTaskStatistics(TaskProvider taskProvider) {
-    return Row(
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    final isTablet = screenWidth > 600;
+    
+    final crossAxisCount = isDesktop ? 4 : (isTablet ? 2 : 2);
+    
+    return GridView.count(
+      crossAxisCount: crossAxisCount,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: isDesktop ? 1.5 : 1.8,
       children: [
-        Expanded(
-          child: _buildTaskStatCard(
-            'Pending',
-            taskProvider.pendingTasks.length.toString(),
-            Icons.pending_actions,
-            Colors.orange,
-          ),
+        _buildTaskStatCard(
+          'Pending',
+          taskProvider.pendingTasks.length.toString(),
+          Icons.pending_actions,
+          Colors.orange,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildTaskStatCard(
-            'In Progress',
-            taskProvider.inProgressTasks.length.toString(),
-            Icons.play_arrow,
-            Colors.blue,
-          ),
+        _buildTaskStatCard(
+          'In Progress',
+          taskProvider.inProgressTasks.length.toString(),
+          Icons.play_arrow,
+          Colors.blue,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildTaskStatCard(
-            'Completed',
-            taskProvider.completedTasks.length.toString(),
-            Icons.check_circle,
-            Colors.green,
-          ),
+        _buildTaskStatCard(
+          'Completed',
+          taskProvider.completedTasks.length.toString(),
+          Icons.check_circle,
+          Colors.green,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildTaskStatCard(
-            'Overdue',
-            taskProvider.overdueTasks.length.toString(),
-            Icons.warning,
-            Colors.red,
-          ),
+        _buildTaskStatCard(
+          'Overdue',
+          taskProvider.overdueTasks.length.toString(),
+          Icons.warning,
+          Colors.red,
         ),
       ],
     );
@@ -921,10 +1183,13 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
       ),
     );
   }
-
   Widget _buildLearningPage() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    final padding = isDesktop ? 24.0 : 16.0;
+    
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -997,10 +1262,13 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
       ),
     );
   }
-
   Widget _buildNotificationsPage() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    final padding = isDesktop ? 24.0 : 16.0;
+    
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1091,10 +1359,13 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
       ),
     );
   }
-
   Widget _buildOpportunitiesPage() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    final padding = isDesktop ? 24.0 : 16.0;
+    
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
