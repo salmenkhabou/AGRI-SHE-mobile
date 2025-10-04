@@ -1162,27 +1162,6 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
     );
   }
 
-  Widget _buildTaskCard(String title, String dueDate, bool isUrgent, Color color) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
-          child: Icon(Icons.task, color: color),
-        ),
-        title: Text(title),
-        subtitle: Text(dueDate),
-        trailing: isUrgent 
-            ? Chip(
-                label: const Text('Urgent'),
-                backgroundColor: Colors.red.withOpacity(0.1),
-                labelStyle: const TextStyle(color: Colors.red, fontSize: 12),
-              )
-            : const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {},
-      ),
-    );
-  }
   Widget _buildLearningPage() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 800;
